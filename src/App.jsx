@@ -1,29 +1,12 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState } from "react";
 
 function App() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
-
   const [ascii, setAscii] = useState("");
   const [started, setStarted] = useState(false);
-  const [mode, setMode] = useState("normal");
-  const [mouse, setMouse] = useState({ x: 0, y: 0 });
-  const [explosions, setExplosions] = useState([]);
 
-  const WIDTH = 120;
-  const HEIGHT = 60;
-
-  const chars =
-    " .'`^\",:;Il!i~+_-?][}{1)(|\\/*tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
-
-  // 🎯 키보드 모드 변경
-  useEffect(() => {
-    window.onkeydown = (e) => {
-      if (e.key === "1") setMode("normal");
-      if (e.key === "2") setMode("glitch");
-      if (e.key === "3") setMode("matrix");
-    };
-  }, []);
+  const chars = " .'`^\",:;Il!i~+_-?][}{1)(|\\/*tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
 
   const start = () => {
     const video = videoRef.current;
@@ -31,56 +14,27 @@ function App() {
     const ctx = canvas.getContext("2d");
 
     setStarted(true);
-    video.play();
+    video.play(); // 👉 영상 + 소리 같이 시작
 
     const render = () => {
       if (video.paused || video.ended) return;
 
-      ctx.drawImage(video, 0, 0, WIDTH, HEIGHT);
-      const frame = ctx.getImageData(0, 0, WIDTH, HEIGHT);
+      ctx.drawImage(video, 0, 0, 120, 60);
+      const frame = ctx.getImageData(0, 0, 120, 60);
 
       let result = "";
 
-      for (let i = 0; i < HEIGHT; i++) {
-        for (let j = 0; j < WIDTH; j++) {
-          const idx = (i * WIDTH + j) * 4;
+      for (let i = 0; i < frame.data.length; i += 4) {
+        const r = frame.data[i];
+        const g = frame.data[i + 1];
+        const b = frame.data[i + 2];
 
-          const r = frame.data[idx];
-          const g = frame.data[idx + 1];
-          const b = frame.data[idx + 2];
+        const gray = (r + g + b) / 3;
+        const index = Math.floor((gray / 255) * (chars.length - 1));
 
-          const gray = (r + g + b) / 3;
-          let index = Math.floor((gray / 255) * (chars.length - 1));
-          let char = chars[index];
+        result += chars[index];
 
-          // 💀 마우스 깨짐 효과
-          const dx = j - mouse.x / 8;
-          const dy = i - mouse.y / 12;
-          if (Math.sqrt(dx * dx + dy * dy) < 4) {
-            char = "#";
-          }
-
-          // 💥 폭발 효과
-          explosions.forEach((exp) => {
-            const ex = exp.x / 8;
-            const ey = exp.y / 12;
-            const d = Math.sqrt((j - ex) ** 2 + (i - ey) ** 2);
-            if (d < 5) char = "@";
-          });
-
-          // ⚡ glitch 모드
-          if (mode === "glitch" && Math.random() < 0.05) {
-            char = chars[Math.floor(Math.random() * chars.length)];
-          }
-
-          // 🧠 matrix 모드
-          if (mode === "matrix" && Math.random() < 0.05) {
-            char = "0";
-          }
-
-          result += char;
-        }
-        result += "\n";
+        if ((i / 4 + 1) % 120 === 0) result += "\n";
       }
 
       setAscii(result);
@@ -91,59 +45,23 @@ function App() {
   };
 
   return (
-    <div
-      style={{
-        background: "black",
-        color: mode === "matrix" ? "#00ff00" : "white",
-        height: "100vh",
-        overflow: "hidden",
-      }}
-      onMouseMove={(e) => setMouse({ x: e.clientX, y: e.clientY })}
-      onClick={(e) =>
-        setExplosions([...explosions, { x: e.clientX, y: e.clientY }])
-      }
-    >
+    <div style={{ background: "black", color: "white", height: "100vh" }}>
       {!started && (
-        <button
-          onClick={start}
-          style={{
-            fontSize: "20px",
-            padding: "10px 20px",
-            position: "absolute",
-            zIndex: 2,
-          }}
-        >
+        <button onClick={start} style={{ fontSize: "20px" }}>
           ▶ 실행
         </button>
       )}
 
-      {/* 🎮 UI */}
-      <div style={{ position: "absolute", top: 10, left: 10, zIndex: 2 }}>
-        <p>1: 기본 | 2: glitch | 3: matrix</p>
-        <p>클릭: 폭발 💥</p>
-        <p>마우스: 화면 깨짐 😈</p>
-      </div>
-
+      {/* 🎬 영상 (소리 포함) */}
       <video
         ref={videoRef}
         src="/badapple.mp4"
         style={{ display: "none" }}
       />
 
-      <canvas
-        ref={canvasRef}
-        width={WIDTH}
-        height={HEIGHT}
-        style={{ display: "none" }}
-      />
+      <canvas ref={canvasRef} width="120" height="60" style={{ display: "none" }} />
 
-      <pre
-        style={{
-          fontSize: "6px",
-          lineHeight: "6px",
-          margin: 0,
-        }}
-      >
+      <pre style={{ fontSize: "6px", lineHeight: "6px" }}>
         {ascii}
       </pre>
     </div>
